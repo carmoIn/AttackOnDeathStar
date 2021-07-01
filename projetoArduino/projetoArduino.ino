@@ -104,7 +104,7 @@ unsigned long tempoNave = 0;
 unsigned long tempoInimigo = 0;
 unsigned long tempoSpawn = 0;
 unsigned long tempoScore = 0;
-uint8_t vida = 3;
+int vida = 3;
 unsigned long score = 0;
 unsigned long tempoAtirar = 0;
 typedef struct {
@@ -312,6 +312,7 @@ void descerInimigo(uint8_t y)
         if (spawn[i].posicaoInimigoY > 240) {
           spawn[i].posicaoInimigoY = 0;             // arrumar
           spawn[i].posicaoInimigoX = random(0, 240);
+          perderVida();
         }
         renderizarInimigo(i);
         spawn[i].tempoInimigo = millis();
@@ -449,9 +450,16 @@ void scoreDestruirInimigo()
   }
 }
 
-void perderVida(int Inimigo)
+void perderVida()
 {
-  //if((pow(posicaoNave - spawn[Inimigo].posicaoInimigoX, 2) + )
+  if(vida - 1> 0){
+    vida --;
+  } else {
+    formatarTextoBase(3);
+    tft.setCursor(43,120);
+    tft.print("GAME OVER");
+    vida = 0;
+  }
 }
 
 void atualizarPlacar()
@@ -518,8 +526,10 @@ void loop() {
   int confirmaEstado = digitalRead(BOTAOCONFIRM_PIN);
 
   if (telaAtual == 1) {
-    atualizarJogo();
-  }   else {
+    if(vida > 0){
+      atualizarJogo();
+     }
+  }else {
     if (selecionaEstado == HIGH) {
       if (telaAtual == 0) {
         atualizarSeletorMenu();
