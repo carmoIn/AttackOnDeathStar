@@ -59,6 +59,7 @@ void renderizarTiro();
 void apagarTiro(uint8_t tiro);
 boolean tiroColideInimigo();
 void scoreDestruirInimigo();
+void perderVida();
 void atualizarPlacar();
 void atualizarJogo();
 void Spawn();
@@ -446,6 +447,11 @@ void scoreDestruirInimigo()
   if (score >= 10){
     renderizarEstrela();
   }
+}
+
+void perderVida(int Inimigo)
+{
+  //if((pow(posicaoNave - spawn[Inimigo].posicaoInimigoX, 2) + )
 }
 
 void atualizarPlacar()
