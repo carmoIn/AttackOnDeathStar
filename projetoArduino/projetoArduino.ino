@@ -31,7 +31,6 @@
 
 //MÁXIMO TIROS
 #define MAXIMO_TIROS       3
-
 void imprimirMenu();
 void ImprimirLogo();
 void ocultarSeletorAnterior();
@@ -50,8 +49,8 @@ void renderizarNave();
 void apagarNave();
 void renderizarEstrela();
 void apagarEstrela();
-void moverEstrela();
-void descerInimigo(uint8_t y);     // usar função random()? escolher um número dentro do previsto, por ser usado para fazer o inimigo nascer
+void descerInimigo(uint8_t y);
+void moverEstrela(uint8_t x);                   // usar função random()? escolher um número dentro do previsto, por ser usado para fazer o inimigo nascer
 void renderizarInimigo(int ID);
 void apagarInimigo(int ID);
 void atirar();
@@ -63,6 +62,7 @@ void scoreDestruirInimigo();
 void atualizarPlacar();
 void atualizarJogo();
 void Spawn();
+void SpawnEstrela();
 
 void limparTela();
 void formatarTextoBase(uint8_t tamanho);
@@ -93,13 +93,12 @@ const unsigned char inimigo[] PROGMEM = {
 
 // Initialize Adafruit ST7789 TFT library
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
-
+uint8_t direcao = 0;
 uint8_t menuSelecionado = 1;
 uint8_t menuAnterior = 0;
 uint8_t telaAtual = 0;
 uint8_t posicaoNave = 100;
 uint8_t posicaoInimigo = 0;
-uint8_t posicaoEstrela = 16; // apagar depois que implementar o struct da estrela
 unsigned long tempoNave = 0;
 unsigned long tempoInimigo = 0;
 unsigned long tempoSpawn = 0;
@@ -115,6 +114,14 @@ typedef struct {
   boolean Inimigo = false;
 } Inimigos;
 Inimigos spawn[4];
+typedef struct {
+  uint8_t posicaoEstrelaY = 0;
+  uint8_t posicaoEstrelaX = 0;
+  unsigned long tempoEstrela = 0;
+  uint8_t Hp;
+  boolean Estrela = false;
+} EstrelaConfig;
+EstrelaConfig BOSS;
 
 typedef struct {
   uint8_t posicaoTiroY = 200;
@@ -122,8 +129,8 @@ typedef struct {
   unsigned long tempoTiro = 0;
   boolean ativo = false;
 } tiro;
-tiro tiros[MAXIMO_TIROS];
 
+tiro tiros[MAXIMO_TIROS];
 
 
 
@@ -288,11 +295,11 @@ void apagarNave()
 
 void renderizarEstrela()
 {
-  tft.fillCircle(100, posicaoEstrela, 16 , ST77XX_WHITE);
+  tft.fillCircle(BOSS.posicaoEstrelaX, BOSS.posicaoEstrelaY, 16 , ST77XX_WHITE);
 }
 void apagarEstrela()
 {
-  tft.fillCircle(100, posicaoEstrela, 16, COR_FUNDO);
+  tft.fillCircle(BOSS.posicaoEstrelaX, BOSS.posicaoEstrelaY, 16, COR_FUNDO);
 }
 
 void descerInimigo(uint8_t y)
@@ -310,6 +317,38 @@ void descerInimigo(uint8_t y)
       }
     }
   }
+}
+
+void SpawnEstrela()
+{ if (BOSS.Estrela == false) {
+    BOSS.posicaoEstrelaY = 16;
+    BOSS.posicaoEstrelaX = 120;
+    BOSS.Estrela = true;
+  }
+  renderizarEstrela(); // teste(apagar)
+}
+void moverEstrela()
+{
+  if (BOSS.Estrela == true) {
+    if (millis() > BOSS.tempoEstrela + DELAY20) {
+      apagarEstrela();
+
+      if ( direcao == 0) {
+        BOSS.posicaoEstrelaX -= 1;
+      }
+      if (BOSS.posicaoEstrelaX == 40) {
+        direcao = 1;
+
+      }
+      if (direcao == 1) {
+        BOSS.posicaoEstrelaX += 1;
+      }
+      if (BOSS.posicaoEstrelaX == 200) {
+        direcao = 0;
+      }
+    }
+  }
+  renderizarEstrela();
 }
 void Spawn()
 { for (int i = 0; i < 4; i++) {
@@ -448,6 +487,8 @@ void atualizarJogo()
   int selecionaEstado = digitalRead(BOTAOSELECT_PIN);
   int confirmaEstado = digitalRead(BOTAOCONFIRM_PIN);
   Spawn();
+  SpawnEstrela();
+  moverEstrela();
   descerInimigo(3);
   atualizarPlacar();
   if (confirmaEstado == HIGH) {
