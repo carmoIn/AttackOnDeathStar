@@ -507,7 +507,7 @@ void atualizarJogo()
   SpawnEstrela();
   moverEstrela();
   descerInimigo(3);
-  //atualizarPlacar();
+  atualizarPlacar();
   if (confirmaEstado == HIGH) {
     moverNave(5);
   }
