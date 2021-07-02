@@ -365,11 +365,13 @@ void Spawn()
 }
 void renderizarInimigo(int ID)
 {
+  
   tft.drawBitmap(spawn[ID].posicaoInimigoX, spawn[ID].posicaoInimigoY, inimigo, 32, 32, ST77XX_WHITE); //tft.fillCircle(120, posicaoInimigo, 25, ST77XX_WHITE);
 }
 
 void apagarInimigo(int ID)
 {
+  tft.drawCircle(spawn[ID].posicaoInimigoX + 15, spawn[ID].posicaoInimigoY + 15, 16, COR_FUNDO);
   tft.drawBitmap(spawn[ID].posicaoInimigoX, spawn[ID].posicaoInimigoY, inimigo, 32, 32, COR_FUNDO); //tft.fillCircle(120, posicaoInimigo, 25, COR_FUNDO);
 }
 
@@ -434,7 +436,7 @@ void apagarTiro(int Tiro)
 
 boolean tiroColideInimigo(int Tiro, int Inimigo)
 {
-  if ((pow(tiros[Tiro].posicaoTiroX - spawn[Inimigo].posicaoInimigoX , 2) + pow(tiros[Tiro].posicaoTiroY - spawn[Inimigo].posicaoInimigoY , 2)) <= pow(16, 2)) {
+  if ((pow(tiros[Tiro].posicaoTiroX - spawn[Inimigo].posicaoInimigoX - 15, 2) + pow(tiros[Tiro].posicaoTiroY  - spawn[Inimigo].posicaoInimigoY , 2)) <= pow(16, 2)) {
     return true;
   } else {
     return false;
