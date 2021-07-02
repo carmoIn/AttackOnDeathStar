@@ -456,10 +456,10 @@ void perderVida()
     vida --;
   } else {
     formatarTextoBase(3);
-    tft.setCursor(43,120);
+    tft.setCursor(41,120);
     tft.print("GAME OVER");
     vida = 0;
-  }
+  } 
 }
 
 void atualizarPlacar()
@@ -528,6 +528,10 @@ void loop() {
   if (telaAtual == 1) {
     if(vida > 0){
       atualizarJogo();
+     } else if (vida == 0){
+        if(confirmaEstado == HIGH){
+          voltarMenu();
+        }
      }
   }else {
     if (selecionaEstado == HIGH) {
