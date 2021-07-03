@@ -141,8 +141,8 @@ tiro tiros[MAXIMO_TIROS];
 
 
 
-int pontos[MAXIMO_RANKING] = {5, 6, 7};
-char jogador[MAXIMO_RANKING][MAXIMO_NOME_JOGADOR] = {"HLJ", "RAO", "JGM"};
+int pontos[MAXIMO_RANKING] = {0, 0, 0};
+char jogador[MAXIMO_RANKING][MAXIMO_NOME_JOGADOR] = {"", "", ""};
 char gameOverJogador[4];
 
 
@@ -240,7 +240,10 @@ void iniciarJogo()
   limparTela();
   renderizarNave();
   vida = 3;
-
+  score = 0;
+  strcpy(gameOverJogador, "   ");
+  incrementaJogador = 0;
+  alterarPosicaoJogador = 0;
   atualizarPlacar();
 }
 
@@ -263,8 +266,8 @@ void limparTela()
   tft.fillScreen(COR_FUNDO);
 }
 
-void rankingGameOver(){
-  if (vida == 0){
+void rankingGameOver() {
+  if (vida == 0) {
     tft.fillRect(43, 115, 125, 35, COR_FUNDO);
     tft.setCursor(43, 115);
     formatarTextoBase(3);
@@ -275,13 +278,13 @@ void rankingGameOver(){
 
 void atualizarNomeJogador()
 {
-    gameOverJogador[alterarPosicaoJogador] = 'A' + incrementaJogador;
-    if (gameOverJogador[alterarPosicaoJogador] <= 'Z'){
+  gameOverJogador[alterarPosicaoJogador] = 'A' + incrementaJogador;
+  if (gameOverJogador[alterarPosicaoJogador] <= 'Z') {
     incrementaJogador++;
     delay(200);
-    } else {
-      incrementaJogador = 0;
-    }
+  } else {
+    incrementaJogador = 0;
+  }
 }
 
 void imprimirRanking()
@@ -519,8 +522,7 @@ void perderVida()
     vida --;
   } else {
     formatarTextoBase(3);
-
-    tft.setCursor(43,80);
+    tft.setCursor(43, 80);
     tft.print("GAME OVER");
     vida = 0;
     rankingGameOver();
@@ -540,7 +542,6 @@ void atualizarPlacar()
   tempoScore = millis();
 
 }
-
 
 
 void ordenarRanking()
@@ -590,21 +591,30 @@ void loop() {
   if (telaAtual == 1) {
     if (vida > 0) {
       atualizarJogo(confirmaEstado, selecionaEstado);
-     } else if (vida == 0){
-        if(selecionaEstado == HIGH){
+    } else if (vida == 0) {
+      if (score > pontos[MAXIMO_RANKING - 1]) {
+        if (selecionaEstado == HIGH) {
           rankingGameOver();              //voltarMenu(); confirmar para voltar o menu depois que ranking funcionar
-        } else if (confirmaEstado == HIGH){
-          if(alterarPosicaoJogador < 2){
+        } else if (confirmaEstado == HIGH) {
+          if (alterarPosicaoJogador < 2) {
             incrementaJogador = 0;
             alterarPosicaoJogador++;
             rankingGameOver();
             delay(400);
           } else {
+            pontos[MAXIMO_RANKING - 1] = score;
+            strcpy(jogador[MAXIMO_RANKING-1], gameOverJogador);
+            ordenarRanking();
             voltarMenu();
           }
         }
-     }
-  }else {
+      } else {
+        if (confirmaEstado == HIGH || selecionaEstado == HIGH) {
+          voltarMenu();
+        }
+      }
+    }
+  } else {
     if (selecionaEstado == HIGH) {
       if (telaAtual == 0) {
         atualizarSeletorMenu();
