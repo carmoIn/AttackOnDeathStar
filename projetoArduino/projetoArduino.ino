@@ -232,7 +232,7 @@ void iniciarJogo()
   limparTela();
   renderizarNave();
   vida = 3;
-  //renderizarEstrela();
+  atualizarPlacar();
 }
 
 void creditos()
@@ -448,6 +448,7 @@ boolean tiroColideInimigo(int Tiro, int Inimigo)
 void scoreDestruirInimigo()
 {
   score++;
+  atualizarPlacar();
   if (score >= 10) {
     renderizarEstrela();
   }
@@ -462,21 +463,21 @@ void perderVida()
     tft.setCursor(41,120);
     tft.print("GAME OVER");
     vida = 0;
-  } 
+  }
+  atualizarPlacar();
 }
 
 void atualizarPlacar()
 {
-  if (millis() > tempoScore + DELAY20) {
-    tft.fillRect(10, 225, 250, 30, COR_FUNDO);
-    formatarTextoBase(2);
-    tft.setCursor(10, 225);
-    tft.print(score);
-    tft.setCursor(100, 225);
-    tft.setTextColor(ST77XX_RED);
-    tft.print(vida);
-    tempoScore = millis();
-  }
+  tft.fillRect(10, 225, 250, 30, COR_FUNDO);
+  formatarTextoBase(2);
+  tft.setCursor(10, 225);
+  tft.print(score);
+  tft.setCursor(100, 225);
+  tft.setTextColor(ST77XX_RED);
+  tft.print(vida);
+  tempoScore = millis();
+
 }
 
 
@@ -507,7 +508,6 @@ void atualizarJogo()
   SpawnEstrela();
   moverEstrela();
   descerInimigo(3);
-  atualizarPlacar();
   if (confirmaEstado == HIGH) {
     moverNave(5);
   }
