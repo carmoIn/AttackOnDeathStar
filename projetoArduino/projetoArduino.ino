@@ -110,6 +110,7 @@ unsigned long tempoSpawn = 0;
 unsigned long tempoScore = 0;
 int vida = 3;
 unsigned long score = 0;
+unsigned long scoreBOSS = 0;
 unsigned long tempoAtirar = 0;
 typedef struct {
   uint8_t posicaoInimigoY;
@@ -123,7 +124,7 @@ typedef struct {
   uint8_t posicaoEstrelaY = 0;
   uint8_t posicaoEstrelaX = 0;
   unsigned long tempoEstrela = 0;
-  uint8_t Hp;
+  uint8_t Hp = 10;
   boolean Estrela = false;
 } EstrelaConfig;
 EstrelaConfig BOSS;
@@ -238,7 +239,8 @@ void iniciarJogo()
   limparTela();
   renderizarNave();
   vida = 3;
-  //renderizarEstrela();
+
+  atualizarPlacar();
 }
 
 void creditos()
@@ -299,7 +301,9 @@ void moverNave(int8_t x)
 {
   if (millis() > tempoNave + DELAY20) {
     apagarNave();
-   if(posicaoNave + x >= 0){ posicaoNave += x;}
+    if (posicaoNave + x >= 0) {
+      posicaoNave += x;
+    }
     if (x > 0 && posicaoNave > 215) {
       posicaoNave = 215;
     }
@@ -352,6 +356,7 @@ void SpawnEstrela()
 { if (BOSS.Estrela == false) {
     BOSS.posicaoEstrelaY = 16;
     BOSS.posicaoEstrelaX = 120;
+    BOSS.Hp = 10;
     BOSS.Estrela = true;
   }
   renderizarEstrela(); // teste(apagar)
@@ -376,9 +381,10 @@ void moverEstrela()
       if (BOSS.posicaoEstrelaX >= 200) {
         direcao = 0;
       }
+      renderizarEstrela();
     }
   }
-  renderizarEstrela();
+
 }
 void Spawn()
 { for (int i = 0; i < 4; i++) {
@@ -394,7 +400,7 @@ void Spawn()
 }
 void renderizarInimigo(int ID)
 {
-  
+
   tft.drawBitmap(spawn[ID].posicaoInimigoX, spawn[ID].posicaoInimigoY, inimigo, 32, 32, ST77XX_WHITE); //tft.fillCircle(120, posicaoInimigo, 25, ST77XX_WHITE);
 }
 
@@ -421,7 +427,7 @@ void atirar()
 
 void moverTiro(uint8_t y) // recebido do mover tiro, 5;
 {
-  bool a;
+  bool resultado;
   for (int i = 0; i < MAXIMO_TIROS; i++) {
     if (tiros[i].ativo == true) {
       if (millis() > tiros[i].tempoTiro + DELAY20) {
@@ -440,17 +446,32 @@ void moverTiro(uint8_t y) // recebido do mover tiro, 5;
       apagarTiro(i);
     }
     for (int j = 0; j < 4; j++) {
-      bool a = tiroColideInimigo(i, j);
+      bool resultado = tiroColideInimigo(i, j);
       if (spawn[j].Inimigo == true) {
-        if (a == true) {
+        if (resultado == true) {
           spawn[j].Inimigo = false;
+          tiros[i].ativo = false;
           apagarTiro(i);
           apagarInimigo(j);
           scoreDestruirInimigo();
         }
       }
     }
+    tiroColideEstrela(i);
+    resultado = tiroColideEstrela(i);
+    if (BOSS.Estrela == true) {
+      if (resultado == true) {
+        tiros[i].ativo = false;
+        apagarTiro(i);
+        BOSS.Hp -= 1;
+        if ( BOSS.Hp == 0) {
+          BOSS.Estrela = false;
+          apagarEstrela();
+        }
+      }
+    }
   }
+
 }
 
 void renderizarTiro(int Tiro)
@@ -462,7 +483,14 @@ void apagarTiro(int Tiro)
 {
   tft.drawRect(tiros[Tiro].posicaoTiroX, tiros[Tiro].posicaoTiroY, 2, 5, COR_FUNDO);
 }
-
+boolean tiroColideEstrela(int Tiro)
+{ if ((pow(tiros[Tiro].posicaoTiroX - BOSS.posicaoEstrelaX - 15, 2) + pow(tiros[Tiro].posicaoTiroY  - BOSS.posicaoEstrelaY , 2)) <= pow(16, 2)) {
+    return true;
+  }
+  else {
+    return false;
+  }
+}
 boolean tiroColideInimigo(int Tiro, int Inimigo)
 {
   if ((pow(tiros[Tiro].posicaoTiroX - spawn[Inimigo].posicaoInimigoX - 15, 2) + pow(tiros[Tiro].posicaoTiroY  - spawn[Inimigo].posicaoInimigoY , 2)) <= pow(16, 2)) {
@@ -473,38 +501,43 @@ boolean tiroColideInimigo(int Tiro, int Inimigo)
 }
 
 void scoreDestruirInimigo()
-{
+{ 
+  scoreBOSS++;
   score++;
-  if (score >= 10) {
-    renderizarEstrela();
+  atualizarPlacar();
+
+  if (scoreBOSS == 10) {
+    SpawnEstrela();
+    scoreBOSS = 0;
   }
 }
 
 void perderVida()
 {
-  if(vida - 1> 0){
+  if (vida - 1 > 0) {
     vida --;
   } else {
     formatarTextoBase(3);
+
     tft.setCursor(43,80);
     tft.print("GAME OVER");
     vida = 0;
     rankingGameOver();
   } 
+  atualizarPlacar();
 }
 
 void atualizarPlacar()
 {
-  if (millis() > tempoScore + DELAY20) {
-    tft.fillRect(10, 225, 250, 30, COR_FUNDO);
-    formatarTextoBase(2);
-    tft.setCursor(10, 225);
-    tft.print(score);
-    tft.setCursor(100, 225);
-    tft.setTextColor(ST77XX_RED);
-    tft.print(vida);
-    tempoScore = millis();
-  }
+  tft.fillRect(10, 225, 250, 30, COR_FUNDO);
+  formatarTextoBase(2);
+  tft.setCursor(10, 225);
+  tft.print(score);
+  tft.setCursor(100, 225);
+  tft.setTextColor(ST77XX_RED);
+  tft.print(vida);
+  tempoScore = millis();
+
 }
 
 
@@ -532,10 +565,9 @@ void atualizarJogo()
   int selecionaEstado = digitalRead(BOTAOSELECT_PIN);
   int confirmaEstado = digitalRead(BOTAOCONFIRM_PIN);
   Spawn();
-  SpawnEstrela();
+
   moverEstrela();
   descerInimigo(3);
-  atualizarPlacar();
   if (confirmaEstado == HIGH) {
     moverNave(5);
   }
@@ -557,7 +589,7 @@ void loop() {
   int confirmaEstado = digitalRead(BOTAOCONFIRM_PIN);
 
   if (telaAtual == 1) {
-    if(vida > 0){
+    if (vida > 0) {
       atualizarJogo();
      } else if (vida == 0){
         if(selecionaEstado == HIGH){   
