@@ -22,7 +22,7 @@
 
 // MAXIMO RANKING E MAXIMO NOME DO JOGADOR
 #define MAXIMO_RANKING        3
-#define MAXIMO_NOME_JOGADOR   31
+#define MAXIMO_NOME_JOGADOR   4
 
 // TEMPO PARA MILLIS()
 #define DELAY20            20
@@ -39,6 +39,8 @@ void atualizarSeletorMenu();
 void selecionarOpcaoMenu();
 void lerJogador();
 void iniciarJogo();
+void rankingGameOver();
+void atualizarNomeJogador();
 void imprimirRanking();
 void ordenarRanking();
 void creditos();
@@ -100,6 +102,8 @@ uint8_t menuAnterior = 0;
 uint8_t telaAtual = 0;
 uint8_t posicaoNave = 100;
 uint8_t posicaoInimigo = 0;
+uint8_t incrementaJogador = 0;
+uint8_t alterarPosicaoJogador = 0;
 unsigned long tempoNave = 0;
 unsigned long tempoInimigo = 0;
 unsigned long tempoSpawn = 0;
@@ -137,6 +141,8 @@ tiro tiros[MAXIMO_TIROS];
 
 int pontos[MAXIMO_RANKING] = {5, 6, 7};
 char jogador[MAXIMO_RANKING][MAXIMO_NOME_JOGADOR] = {"HLJ", "RAO", "JGM"};
+char gameOverJogador[4];
+
 
 
 void setup(void) {
@@ -252,6 +258,27 @@ void creditos()
 void limparTela()
 {
   tft.fillScreen(COR_FUNDO);
+}
+
+void rankingGameOver(){
+  if (vida == 0){
+    tft.fillRect(43, 115, 125, 35, COR_FUNDO);
+    tft.setCursor(43, 115);
+    formatarTextoBase(3);
+    atualizarNomeJogador();
+    tft.print(gameOverJogador);
+  }
+}
+
+void atualizarNomeJogador()
+{
+    gameOverJogador[alterarPosicaoJogador] = 'A' + incrementaJogador;
+    if (gameOverJogador[alterarPosicaoJogador] <= 'Z'){
+    incrementaJogador++;
+    delay(200);
+    } else {
+      incrementaJogador = 0;
+    }
 }
 
 void imprimirRanking()
@@ -459,9 +486,10 @@ void perderVida()
     vida --;
   } else {
     formatarTextoBase(3);
-    tft.setCursor(41,120);
+    tft.setCursor(43,80);
     tft.print("GAME OVER");
     vida = 0;
+    rankingGameOver();
   } 
 }
 
@@ -532,8 +560,17 @@ void loop() {
     if(vida > 0){
       atualizarJogo();
      } else if (vida == 0){
-        if(confirmaEstado == HIGH){
-          voltarMenu();
+        if(selecionaEstado == HIGH){   
+          rankingGameOver();              //voltarMenu(); confirmar para voltar o menu depois que ranking funcionar
+        } else if (confirmaEstado == HIGH){
+          if(alterarPosicaoJogador < 2){
+            incrementaJogador = 0;
+            alterarPosicaoJogador++;
+            rankingGameOver();
+            delay(400);
+          } else {
+            voltarMenu();
+          }
         }
      }
   }else {
