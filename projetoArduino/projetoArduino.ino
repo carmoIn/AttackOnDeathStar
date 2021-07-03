@@ -25,9 +25,10 @@
 #define MAXIMO_NOME_JOGADOR   31
 
 // TEMPO PARA MILLIS()
-#define DELAY20            20
-#define DELAY15            15
-#define DELAYATIRAR        200
+#define DELAY20           20
+#define DELAY15           15
+#define DELAYATIRAR       200
+#define DELAYINIMIGO      50
 
 //MÁXIMO TIROS
 #define MAXIMO_TIROS       3
@@ -306,7 +307,7 @@ void apagarEstrela()
 void descerInimigo(uint8_t y)
 { for (int i = 0; i < 4; i++) {
     if (spawn[i].Inimigo == true) {
-      if (millis() > spawn[i].tempoInimigo + DELAY20) {
+      if (millis() > spawn[i].tempoInimigo + DELAYINIMIGO) {
         apagarInimigo(i);
         spawn[i].posicaoInimigoY += y;
         if (spawn[i].posicaoInimigoY > 240) {
@@ -332,7 +333,7 @@ void SpawnEstrela()
 void moverEstrela()
 {
   if (BOSS.Estrela == true) {
-    if (millis() > BOSS.tempoEstrela + DELAY20) {
+    if (millis() > BOSS.tempoEstrela + DELAYINIMIGO) {
       BOSS.tempoEstrela = millis();
       apagarEstrela();
 
@@ -500,18 +501,16 @@ void ordenarRanking()
   }
 }
 
-void atualizarJogo()
+void atualizarJogo(int botaoEsquerdo, int botaoDireito)
 {
-  int selecionaEstado = digitalRead(BOTAOSELECT_PIN);
-  int confirmaEstado = digitalRead(BOTAOCONFIRM_PIN);
   Spawn();
   SpawnEstrela();
   moverEstrela();
   descerInimigo(3);
-  if (confirmaEstado == HIGH) {
+  if (botaoEsquerdo == HIGH) {
     moverNave(5);
   }
-  if (selecionaEstado == HIGH) {
+  if (botaoDireito == HIGH) {
     moverNave(-5);
   }
   atirar();
@@ -530,7 +529,7 @@ void loop() {
 
   if (telaAtual == 1) {
     if(vida > 0){
-      atualizarJogo();
+      atualizarJogo(confirmaEstado, selecionaEstado);
      } else if (vida == 0){
         if(confirmaEstado == HIGH){
           voltarMenu();
