@@ -3,7 +3,6 @@
 #include <Adafruit_ST7789.h>
 #include <SPI.h>
 #include <string.h>
-#include "SymbolMono18pt7b.h"
 
 // PINOS DISPLAY
 #define TFT_CS                10
@@ -139,6 +138,7 @@ typedef struct {
 } Inimigos;
 
 Inimigos spawn[MAXIMO_INIMIGOS];
+int level = 1;
 
 typedef struct {
   uint8_t posicaoEstrelaY = 0;
@@ -273,6 +273,7 @@ void iniciarJogo()
   limparTela();
   renderizarNave();
   vida = 3;
+  level = 1;
   score = 0;
   strcpy(gameOverJogador, "   ");
   incrementaJogador = 0;
@@ -394,7 +395,7 @@ void SpawnEstrela()
   if (BOSS.Estrela == false) {
     BOSS.posicaoEstrelaY = 16;
     BOSS.posicaoEstrelaX = 120;
-    BOSS.Hp = 10;
+    BOSS.Hp = 5;
     BOSS.Estrela = true;
   }
 }
@@ -545,8 +546,12 @@ void moverTiro(uint8_t y)
           BOSS.Hp -= 1;
           score++;
           atualizarPlacar();
-          if ( BOSS.Hp == 0) {
+          if ( BOSS.Hp <= 0) {
             BOSS.Estrela = false;
+            for (int j = 0; j < MAXIMO_TIROS; j++) {
+              tirosEstrela[j].ativo = false;
+              apagarTiroEstrela(j);
+            }
             apagarEstrela();
           }
         }
@@ -600,9 +605,11 @@ void scoreDestruirInimigo()
   score++;
   atualizarPlacar();
 
-  if (scoreBOSS == 10) { //  mudar para 10
+  if (scoreBOSS == 10 * level) { //  mudar para 10
     SpawnEstrela();
     scoreBOSS = 0;
+    level++;
+    atualizarPlacar();
   }
 }
 
@@ -629,6 +636,10 @@ void atualizarPlacar()
   tft.setCursor(100, 225);
   tft.setTextColor(ST77XX_RED);
   tft.print(vida);
+  tft.setTextColor(COR_TEXTO_BASE);
+  tft.setCursor(140, 225);
+  tft.print("Lvl ");
+  tft.print(level);
 }
 
 
