@@ -12,6 +12,8 @@
 #define BOTAOSELECT_PIN       2  //botão para selecionar
 #define BOTAOCONFIRM_PIN      3 //botão para confirmar
 
+#define BUZZER_PIN            4
+
 // DEFINIÇÕES DE ALINHAMENTO
 #define INICIO_LINHA_MENU     10
 #define TAMANHO_LINHA_MENU    38
@@ -210,6 +212,7 @@ void mostrarSeletorMenu()
 
 void atualizarSeletorMenu()
 {
+  tone(BUZZER_PIN, 400, 50);
   menuAnterior = menuSelecionado;
   if (menuSelecionado < 4) {
     menuSelecionado++;
@@ -221,6 +224,7 @@ void atualizarSeletorMenu()
 
 void selecionarOpcaoMenu()
 {
+  tone(BUZZER_PIN, 600, 50);
   switch (menuSelecionado) {
     case 1: score = 0;
       scoreBOSS = 0;
@@ -433,6 +437,7 @@ void atirar()
   if (millis() > tempoAtirar + DELAYATIRAR) {
     for (int i = 0; i < MAXIMO_TIROS; i++) {
       if (tiros[i].ativo == false) {
+        tone(BUZZER_PIN, 200, 10);
         tiros[i].posicaoTiroY = 200;
         tiros[i].posicaoTiroX = posicaoNave + 16;
         tiros[i].ativo = true;
@@ -485,6 +490,7 @@ void moverTiro(uint8_t y) // recebido do mover tiro, 5;
         if (resultado == true) {
           spawn[j].Inimigo = false;
           tiros[i].ativo = false;
+          tone(BUZZER_PIN, 350, 20);
           apagarTiro(i);
           apagarInimigo(j);
           scoreDestruirInimigo();
@@ -497,7 +503,9 @@ void moverTiro(uint8_t y) // recebido do mover tiro, 5;
         tiros[i].ativo = false;
         apagarTiro(i);
         BOSS.Hp -= 1;
+        tone(BUZZER_PIN, 350, 20);
         if ( BOSS.Hp == 0) {
+          tone(BUZZER_PIN, 200, 100);
           BOSS.Estrela = false;
           apagarEstrela();
         }
@@ -551,6 +559,7 @@ void scoreDestruirInimigo()
 void perderVida()
 {
   if (vida - 1 > 0) {
+    tone(BUZZER_PIN, 100, 50);
     vida --;
   } else {
     formatarTextoBase(3);
@@ -613,6 +622,7 @@ void atualizarJogo(int botaoEsquerdo, int botaoDireito)
 
 void voltarMenu()
 {
+  tone(BUZZER_PIN, 400, 50);
   telaAtual = 0;
   imprimirMenu();
 }
