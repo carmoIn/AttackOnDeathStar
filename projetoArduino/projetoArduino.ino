@@ -1,7 +1,9 @@
+
 #include <Adafruit_GFX.h>
 #include <Adafruit_ST7789.h>
 #include <SPI.h>
 #include <string.h>
+#include "SymbolMono18pt7b.h"
 
 // PINOS DISPLAY
 #define TFT_CS                10
@@ -19,6 +21,7 @@
 // CORES
 #define COR_TEXTO_BASE        0xFFE0
 #define COR_FUNDO             0x00
+#define COR_CENARIO           0x5acb 
 
 // MAXIMO RANKING E MAXIMO NOME DO JOGADOR
 #define MAXIMO_RANKING        3
@@ -32,6 +35,13 @@
 
 //MÁXIMO TIROS
 #define MAXIMO_TIROS       3
+
+// CORAÇÃO
+#define GLYPH_HEART        0
+
+// INIMIGOS
+#define MAXIMO_INIMIGOS    4
+
 void imprimirMenu();
 void ImprimirLogo();
 void ocultarSeletorAnterior();
@@ -58,11 +68,11 @@ void atirar();
 void moverTiro(uint8_t y);
 void renderizarTiro();
 void apagarTiro(uint8_t tiro);
-boolean tiroColideInimigo();
+void apagarTiroEstrela(int tiro);
 void scoreDestruirInimigo();
 void perderVida();
 void atualizarPlacar();
-void atualizarJogo();
+void atualizarJogo(int botaoEsquerdo, int botaoDireito);
 void Spawn();
 void SpawnEstrela();
 void atirarEstrela();
@@ -70,7 +80,10 @@ void limparTela();
 void formatarTextoBase(uint8_t tamanho);
 void imprimirTexto(uint8_t x, uint8_t y, const __FlashStringHelper* texto);
 void renderizarTiroEstrela();
-void moverTiroEstrela();
+void moverTiroEstrela(uint8_t y);
+void cenario();
+void renderizarSimbolo(uint8_t x, uint8_t y, uint8_t c, uint16_t color, uint16_t bg, uint8_t Size);
+
 const unsigned char nave[] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00,
@@ -93,6 +106,8 @@ const unsigned char inimigo[] PROGMEM = {
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
+
+
 // Initialize Adafruit ST7789 TFT library
 Adafruit_ST7789 tft = Adafruit_ST7789(TFT_CS, TFT_DC, TFT_RST);
 uint8_t direcao = 0;
@@ -111,6 +126,7 @@ int vida = 3;
 unsigned long score = 0;
 unsigned long scoreBOSS = 0;
 unsigned long tempoAtirar = 0;
+unsigned long tempoAtirarEstrela = 0;
 typedef struct {
   uint8_t posicaoInimigoY;
   uint8_t posicaoInimigoX;
@@ -118,7 +134,7 @@ typedef struct {
   uint8_t Hp;
   boolean Inimigo = false;
 } Inimigos;
-Inimigos spawn[4];
+Inimigos spawn[MAXIMO_INIMIGOS];
 typedef struct {
   uint8_t posicaoEstrelaY = 0;
   uint8_t posicaoEstrelaX = 0;
@@ -127,9 +143,10 @@ typedef struct {
   boolean Estrela = false;
 } EstrelaConfig;
 EstrelaConfig BOSS;
+
 typedef struct {
-  uint8_t posicaoTiroY = 200;
-  uint8_t posicaoTiroX = posicaoNave + 16;
+  uint8_t posicaoTiroY;
+  uint8_t posicaoTiroX;
   unsigned long tempoTiro = 0;
   boolean ativo = false;
 } tiro;
@@ -141,7 +158,7 @@ tiro tirosEstrela[MAXIMO_TIROS];
 
 int pontos[MAXIMO_RANKING] = {0, 0, 0};
 char jogador[MAXIMO_RANKING][MAXIMO_NOME_JOGADOR] = {"", "", ""};
-char gameOverJogador[4];
+char gameOverJogador[MAXIMO_NOME_JOGADOR];
 
 
 
@@ -222,9 +239,7 @@ void atualizarSeletorMenu()
 void selecionarOpcaoMenu()
 {
   switch (menuSelecionado) {
-    case 1: score = 0;
-      scoreBOSS = 0;
-      iniciarJogo();
+    case 1: iniciarJogo();
       break;
     case 2: imprimirRanking();
       break;
@@ -236,6 +251,15 @@ void selecionarOpcaoMenu()
 
 void iniciarJogo()
 {
+  scoreBOSS = 0;
+  for(int i = 0; i < MAXIMO_TIROS; i++){
+    tiros[i].ativo = false;
+    tirosEstrela[i].ativo = false;
+  }
+  for(int i = 0; i < MAXIMO_INIMIGOS; i++){
+    spawn[i].Inimigo = false;
+  }
+  BOSS.Estrela = false; 
   spawn[0].Inimigo = true;
   limparTela();
   renderizarNave();
@@ -245,6 +269,7 @@ void iniciarJogo()
   incrementaJogador = 0;
   alterarPosicaoJogador = 0;
   atualizarPlacar();
+  renderizarSimbolo(80, 225, GLYPH_HEART, ST77XX_RED ,0,1);
 }
 
 void creditos()
@@ -363,8 +388,6 @@ void SpawnEstrela()
     BOSS.Hp = 10;
     BOSS.Estrela = true;
   }
-  renderizarEstrela(); // teste(apagar)
-
 }
 void moverEstrela()
 {
@@ -416,14 +439,16 @@ void apagarInimigo(int ID)
 }
 void atirarEstrela()
 {
-  if (millis() > tempoAtirar + DELAYATIRAR) {
-    for (int i = 0; i < MAXIMO_TIROS; i++) {
-      if (tiros[i].ativo == false) {
-        tirosEstrela[i].posicaoTiroY = 40;
-        tirosEstrela[i].posicaoTiroX = BOSS.posicaoEstrelaX + 16;
-        tirosEstrela[i].ativo = true;
-        tempoAtirar = millis();
-        break;
+  if (millis() > tempoAtirarEstrela + DELAYATIRAR) {
+    if(BOSS.Estrela == true){
+      for(int i = 0; i < MAXIMO_TIROS; i++){
+        if(tirosEstrela[i].ativo == false){
+          tirosEstrela[i].posicaoTiroY = 40;
+          tirosEstrela[i].posicaoTiroX = BOSS.posicaoEstrelaX + 16;
+          tirosEstrela[i].ativo = true;
+          tempoAtirarEstrela = millis();
+          break;
+        }
       }
     }
   }
@@ -442,23 +467,35 @@ void atirar()
     }
   }
 }
-//void moverTiroEstrela(uint8_t y)
-//{
-//for (int i = 0; i < MAXIMO_TIROS; i++) {
-//if (tirosEstrela[i].ativo == true) {
-//if (millis() > tiros[i].tempoTiro + DELAY20) {
-//apagarTiro(i);
-//if (tirosEstrela[i].posicaoTiroY - y < 0) { tirosEstrela[i].ativo = false;}
-//else {
-//tirosEstrela[i].posicaoTiroY -= y;
-//}
-//renderizarTiroEstrela(i);
-// tirosEstrela[i].tempoTiro = millis();
-// }
-// }
-// }
-//  }
-// if (tirosEstrela[i].posicaoTiroY <= 0 {apagarTiro(i);
+
+void moverTiroEstrela(uint8_t y)
+{
+  if (BOSS.Estrela == true) {
+    for (int i = 0; i < MAXIMO_TIROS; i++) {
+      if (tirosEstrela[i].ativo == true) {
+        if (millis() > tirosEstrela[i].tempoTiro + DELAY20) {
+          apagarTiroEstrela(i);
+          if (tirosEstrela[i].posicaoTiroY >= 225) {
+            tirosEstrela[i].ativo = false;
+          }
+          else {
+            tirosEstrela[i].posicaoTiroY += y;
+            renderizarTiroEstrela(i);
+            if ((tirosEstrela[i].posicaoTiroY >= 200 && tirosEstrela[i].posicaoTiroY <= 220) &&
+                tirosEstrela[i].posicaoTiroX >= posicaoNave && tirosEstrela[i].posicaoTiroX <= posicaoNave + 32) {
+              Serial.print("teste");
+              perderVida();
+              break;
+            }
+          }
+          tirosEstrela[i].tempoTiro = millis();
+  
+        }
+      }
+    }
+  }
+}
+
 void moverTiro(uint8_t y) // recebido do mover tiro, 5;
 {
   bool resultado;
@@ -501,11 +538,14 @@ void moverTiro(uint8_t y) // recebido do mover tiro, 5;
           BOSS.Estrela = false;
           apagarEstrela();
         }
+          
+
       }
     }
   }
 
 }
+
 void renderizarTiroEstrela(int Tiro)
 {
   tft.drawRect(tirosEstrela[Tiro].posicaoTiroX, tirosEstrela[Tiro].posicaoTiroY, 2, 5, ST77XX_WHITE);
@@ -515,11 +555,17 @@ void renderizarTiro(int Tiro)
   tft.drawRect(tiros[Tiro].posicaoTiroX, tiros[Tiro].posicaoTiroY, 2, 5, ST77XX_WHITE);
 }
 
+void apagarTiroEstrela(int Tiro)
+{
+  tft.drawRect(tirosEstrela[Tiro].posicaoTiroX, tirosEstrela[Tiro].posicaoTiroY, 2, 5, COR_FUNDO);
+}
+
 void apagarTiro(int Tiro)
 {
   tft.drawRect(tiros[Tiro].posicaoTiroX, tiros[Tiro].posicaoTiroY, 2, 5, COR_FUNDO);
 }
-boolean tiroColideEstrela(int Tiro)
+
+bool tiroColideEstrela(int Tiro)
 { if ((pow(tiros[Tiro].posicaoTiroX - BOSS.posicaoEstrelaX - 15, 2) + pow(tiros[Tiro].posicaoTiroY  - BOSS.posicaoEstrelaY , 2)) <= pow(16, 2)) {
     return true;
   }
@@ -527,7 +573,8 @@ boolean tiroColideEstrela(int Tiro)
     return false;
   }
 }
-boolean tiroColideInimigo(int Tiro, int Inimigo)
+
+bool tiroColideInimigo(int Tiro, int Inimigo)
 {
   if ((pow(tiros[Tiro].posicaoTiroX - spawn[Inimigo].posicaoInimigoX - 15, 2) + pow(tiros[Tiro].posicaoTiroY  - spawn[Inimigo].posicaoInimigoY , 2)) <= pow(16, 2)) {
     return true;
@@ -536,13 +583,24 @@ boolean tiroColideInimigo(int Tiro, int Inimigo)
   }
 }
 
+bool tiroColideNave(int Tiro)
+{ 
+  if ((pow(tirosEstrela[0].posicaoTiroX - posicaoNave - 15, 2) + pow(tirosEstrela[0].posicaoTiroY, 2)) <= pow(16, 2)) {
+    return true;
+  }
+  else {
+    return false;
+  }
+  return true;
+}
+
 void scoreDestruirInimigo()
 {
   scoreBOSS++;
   score++;
   atualizarPlacar();
 
-  if (scoreBOSS == 10) {
+  if (scoreBOSS == 3) { //  mudar para 10
     SpawnEstrela();
     scoreBOSS = 0;
   }
@@ -551,7 +609,7 @@ void scoreDestruirInimigo()
 void perderVida()
 {
   if (vida - 1 > 0) {
-    vida --;
+    vida--;
   } else {
     formatarTextoBase(3);
     tft.setCursor(43, 80);
@@ -571,6 +629,7 @@ void atualizarPlacar()
   tft.setCursor(100, 225);
   tft.setTextColor(ST77XX_RED);
   tft.print(vida);
+
   tempoScore = millis();
 
 }
@@ -581,8 +640,8 @@ void ordenarRanking()
 {
   int i, j, troca;
   char troca2[MAXIMO_RANKING];
-  for (i = 0; i < 2; i++) {
-    for (j = i + 1; j < 3; j++) {
+  for (i = 0; i < MAXIMO_RANKING - 1; i++) {
+    for (j = i + 1; j < MAXIMO_RANKING; j++) {
       if (pontos[j] > pontos[i]) {
         troca = pontos[j];
         pontos[j] = pontos[i];
@@ -598,8 +657,10 @@ void ordenarRanking()
 void atualizarJogo(int botaoEsquerdo, int botaoDireito)
 {
   Spawn();
+  cenario();
   atirarEstrela();
   moverEstrela();
+  moverTiroEstrela(5);
   descerInimigo(3);
   if (botaoEsquerdo == HIGH) {
     moverNave(5);
@@ -615,6 +676,24 @@ void voltarMenu()
 {
   telaAtual = 0;
   imprimirMenu();
+}
+
+void cenario()
+{
+  tft.fillRect(120,120,6,2, COR_CENARIO);
+  tft.fillRect(122,118,2,6, COR_CENARIO);  
+  tft.fillRect(77,141,6,2, COR_CENARIO);
+  tft.fillRect(79,139,2,6, COR_CENARIO);
+  tft.fillRect(12,77,6,2, COR_CENARIO);
+  tft.fillRect(14,75,2,6, COR_CENARIO);
+  tft.fillRect(200,30,6,2, COR_CENARIO);
+  tft.fillRect(202,28,2,6, COR_CENARIO);
+}
+
+void renderizarSimbolo(uint8_t x, uint8_t y, uint8_t c, uint16_t color, uint16_t bg, uint8_t Size){
+    tft.setFont(&SymbolMono18pt7b);
+    tft.drawChar(x,y,c,color,bg,Size);
+    tft.setFont();
 }
 
 void loop() {
